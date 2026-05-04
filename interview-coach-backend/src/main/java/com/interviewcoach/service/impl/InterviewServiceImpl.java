@@ -6,7 +6,7 @@ import com.interviewcoach.dto.response.InterviewSessionResponse;
 import com.interviewcoach.entity.*;
 import com.interviewcoach.enums.SessionStatus;
 import com.interviewcoach.exception.ResourceNotFoundException;
-import com.interviewcoach.integration.ai.GeminiInterviewQuestionGenerator;
+import com.interviewcoach.integration.ai.GroqInterviewQuestionGenerator;
 import com.interviewcoach.repository.*;
 import com.interviewcoach.service.InterviewService;
 import com.interviewcoach.util.InterviewPromptBuilder;
@@ -28,7 +28,7 @@ public class InterviewServiceImpl implements InterviewService {
     private final InterviewQuestionRepository interviewQuestionRepository;
     private final ResumeProfileRepository resumeProfileRepository;
     private final JobDescriptionRepository jobDescriptionRepository;
-    private final GeminiInterviewQuestionGenerator geminiInterviewQuestionGenerator;
+    private final GroqInterviewQuestionGenerator groqInterviewQuestionGenerator;
 
     @Override
     @Transactional
@@ -43,23 +43,33 @@ public class InterviewServiceImpl implements InterviewService {
                 .map(JobDescription::getJobDescriptionText)
                 .orElse("");
 
-        GeminiInterviewQuestionGenerator.QuestionGenerationResult aiResult =
-                geminiInterviewQuestionGenerator.generateQuestions(
+        GroqInterviewQuestionGenerator.QuestionGenerationResult aiResult =
+                groqInterviewQuestionGenerator.generateQuestionsOrFallback(
                         InterviewPromptBuilder.buildSystemInstruction(),
                         InterviewPromptBuilder.buildUserPrompt(
                                 request.getTargetRole(),
                                 request.getInterviewType(),
+                                request.getDifficultyLevel(),
+                                request.getQuestionStyle(),
                                 user.getSkills(),
                                 resumeText,
                                 jobDescriptionText,
                                 request.getQuestionCount()
-                        )
+                        ),
+                        request.getTargetRole(),
+                        request.getQuestionCount()
                 );
 
         InterviewSession session = InterviewSession.builder()
                 .user(user)
                 .targetRole(request.getTargetRole().trim())
                 .interviewType(request.getInterviewType())
+                .difficultyLevel(request.getDifficultyLevel())
+                .questionStyle(
+                        request.getQuestionStyle() == null || request.getQuestionStyle().isBlank()
+                                ? "SINGLE_FOCUSED"
+                                : request.getQuestionStyle().trim()
+                )
                 .status(SessionStatus.STARTED)
                 .totalQuestions(aiResult.getQuestions().size())
                 .build();
@@ -121,6 +131,8 @@ public class InterviewServiceImpl implements InterviewService {
                 .id(session.getId())
                 .targetRole(session.getTargetRole())
                 .interviewType(session.getInterviewType())
+                .difficultyLevel(session.getDifficultyLevel())
+                .questionStyle(session.getQuestionStyle())
                 .status(session.getStatus())
                 .totalQuestions(session.getTotalQuestions())
                 .createdAt(session.getCreatedAt())

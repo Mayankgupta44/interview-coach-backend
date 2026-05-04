@@ -1,5 +1,6 @@
 package com.interviewcoach.dto.request;
 
+import com.interviewcoach.enums.DifficultyLevel;
 import com.interviewcoach.enums.InterviewType;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -17,6 +18,11 @@ public class CreateInterviewSessionRequest {
 
     @NotNull(message = "Interview type is required")
     private InterviewType interviewType;
+
+    @NotNull(message = "Difficulty level is required")
+    private DifficultyLevel difficultyLevel = DifficultyLevel.FRESHER;
+
+    private String questionStyle = "SINGLE_FOCUSED";
 
     @Min(value = 3, message = "Question count must be at least 3")
     @Max(value = 10, message = "Question count must not exceed 10")

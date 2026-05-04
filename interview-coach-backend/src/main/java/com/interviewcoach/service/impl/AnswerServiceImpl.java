@@ -9,7 +9,7 @@ import com.interviewcoach.entity.*;
 import com.interviewcoach.enums.SessionStatus;
 import com.interviewcoach.exception.BadRequestException;
 import com.interviewcoach.exception.ResourceNotFoundException;
-import com.interviewcoach.integration.ai.GeminiAnswerEvaluator;
+import com.interviewcoach.integration.ai.GroqAnswerEvaluator;
 import com.interviewcoach.repository.*;
 import com.interviewcoach.service.AnswerService;
 import com.interviewcoach.util.AnswerEvaluationPromptBuilder;
@@ -20,6 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
+import com.interviewcoach.enums.AnswerMode;
+import com.interviewcoach.service.AudioStorageService;
+import com.interviewcoach.integration.ai.GroqTranscriptionClient;
+import org.springframework.web.multipart.MultipartFile;
+import com.interviewcoach.dto.request.SubmitAudioTranscriptRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -31,8 +36,10 @@ public class AnswerServiceImpl implements AnswerService {
     private final InterviewQuestionRepository interviewQuestionRepository;
     private final InterviewAnswerRepository interviewAnswerRepository;
     private final AnswerEvaluationRepository answerEvaluationRepository;
-    private final GeminiAnswerEvaluator geminiAnswerEvaluator;
+    private final GroqAnswerEvaluator groqAnswerEvaluator;
     private final ObjectMapper objectMapper;
+    private final AudioStorageService audioStorageService;
+    private final GroqTranscriptionClient groqTranscriptionClient;
 
     @Override
     @Transactional
@@ -56,11 +63,14 @@ public class AnswerServiceImpl implements AnswerService {
         InterviewAnswer answer = InterviewAnswer.builder()
                 .interviewQuestion(question)
                 .answerText(request.getAnswerText().trim())
+                .answerMode(AnswerMode.TEXT)
+                .transcriptText(null)
+                .audioUrl(null)
                 .build();
 
         InterviewAnswer savedAnswer = interviewAnswerRepository.save(answer);
 
-        GeminiAnswerEvaluator.AnswerEvaluationResult aiResult = geminiAnswerEvaluator.evaluate(
+        GroqAnswerEvaluator.AnswerEvaluationResult aiResult = groqAnswerEvaluator.evaluate(
                 AnswerEvaluationPromptBuilder.buildSystemInstruction(),
                 AnswerEvaluationPromptBuilder.buildUserPrompt(
                         session.getTargetRole(),
@@ -77,6 +87,9 @@ public class AnswerServiceImpl implements AnswerService {
                         .technicalScore(aiResult.getTechnicalScore())
                         .communicationScore(aiResult.getCommunicationScore())
                         .overallScore(aiResult.getOverallScore())
+                        .depthLevel(aiResult.getDepthLevel())
+                        .isShallow(aiResult.getIsShallow())
+                        .missingKeywordsJson(writeJson(aiResult.getMissingKeywords()))
                         .strengthsJson(writeJson(aiResult.getStrengths()))
                         .weaknessesJson(writeJson(aiResult.getWeaknesses()))
                         .missingPointsJson(writeJson(aiResult.getMissingPoints()))
@@ -174,9 +187,13 @@ public class AnswerServiceImpl implements AnswerService {
 
     private List<String> readJsonArray(String json) {
         try {
+            if (json == null || json.isBlank()) {
+                return Collections.emptyList();
+            }
+
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (Exception ex) {
-            throw new IllegalStateException("Failed to deserialize evaluation JSON", ex);
+            return Collections.emptyList();
         }
     }
 
@@ -189,6 +206,9 @@ public class AnswerServiceImpl implements AnswerService {
                 .answerText(answer.getAnswerText())
                 .createdAt(answer.getCreatedAt())
                 .evaluation(mapToEvaluationResponse(evaluation))
+                .answerMode(answer.getAnswerMode().name())
+                .audioUrl(answer.getAudioUrl())
+                .transcriptText(answer.getTranscriptText())
                 .build();
     }
 
@@ -199,11 +219,147 @@ public class AnswerServiceImpl implements AnswerService {
                 .technicalScore(evaluation.getTechnicalScore())
                 .communicationScore(evaluation.getCommunicationScore())
                 .overallScore(evaluation.getOverallScore())
+                .depthLevel(evaluation.getDepthLevel())
+                .isShallow(evaluation.getIsShallow())
+                .missingKeywords(readJsonArray(evaluation.getMissingKeywordsJson()))
                 .strengths(readJsonArray(evaluation.getStrengthsJson()))
                 .weaknesses(readJsonArray(evaluation.getWeaknessesJson()))
                 .missingPoints(readJsonArray(evaluation.getMissingPointsJson()))
                 .improvedAnswer(evaluation.getImprovedAnswer())
                 .createdAt(evaluation.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public InterviewAnswerResponse submitAudioAnswer(Long sessionId, Long questionId, MultipartFile audioFile) {
+        User user = getCurrentUser();
+
+        InterviewSession session = interviewSessionRepository.findByIdAndUserId(sessionId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Interview session not found"));
+
+        InterviewQuestion question = interviewQuestionRepository.findById(questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Interview question not found"));
+
+        if (!question.getInterviewSession().getId().equals(session.getId())) {
+            throw new BadRequestException("Question does not belong to the given session");
+        }
+
+        if (interviewAnswerRepository.findByInterviewQuestionId(questionId).isPresent()) {
+            throw new BadRequestException("Answer already submitted for this question");
+        }
+
+        AudioStorageService.StoredAudioResult storedAudio = audioStorageService.storeAudio(audioFile);
+        String transcript = groqTranscriptionClient.transcribe(storedAudio.getFilePath());
+
+        InterviewAnswer answer = InterviewAnswer.builder()
+                .interviewQuestion(question)
+                .answerText(transcript)
+                .answerMode(AnswerMode.AUDIO)
+                .audioUrl(storedAudio.getAudioUrl())
+                .transcriptText(transcript)
+                .build();
+
+        InterviewAnswer savedAnswer = interviewAnswerRepository.save(answer);
+
+        GroqAnswerEvaluator.AnswerEvaluationResult aiResult = groqAnswerEvaluator.evaluate(
+                AnswerEvaluationPromptBuilder.buildSystemInstruction(),
+                AnswerEvaluationPromptBuilder.buildUserPrompt(
+                        session.getTargetRole(),
+                        session.getInterviewType().name(),
+                        question.getQuestionText(),
+                        transcript,
+                        AnswerMode.AUDIO.name()
+                )
+        );
+
+        AnswerEvaluation savedEvaluation = answerEvaluationRepository.save(
+                AnswerEvaluation.builder()
+                        .interviewAnswer(savedAnswer)
+                        .relevanceScore(aiResult.getRelevanceScore())
+                        .technicalScore(aiResult.getTechnicalScore())
+                        .communicationScore(aiResult.getCommunicationScore())
+                        .overallScore(aiResult.getOverallScore())
+                        .depthLevel(aiResult.getDepthLevel())
+                        .isShallow(aiResult.getIsShallow())
+                        .missingKeywordsJson(writeJson(aiResult.getMissingKeywords()))
+                        .strengthsJson(writeJson(aiResult.getStrengths()))
+                        .weaknessesJson(writeJson(aiResult.getWeaknesses()))
+                        .missingPointsJson(writeJson(aiResult.getMissingPoints()))
+                        .improvedAnswer(aiResult.getImprovedAnswer())
+                        .build()
+        );
+
+        updateSessionStatusIfCompleted(session);
+
+        return mapToAnswerResponse(savedAnswer, savedEvaluation);
+    }
+
+    @Override
+    @Transactional
+    public InterviewAnswerResponse submitAudioTranscriptAnswer(
+            Long sessionId,
+            Long questionId,
+            SubmitAudioTranscriptRequest request
+    ) {
+        User user = getCurrentUser();
+
+        InterviewSession session = interviewSessionRepository.findByIdAndUserId(sessionId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Interview session not found"));
+
+        InterviewQuestion question = interviewQuestionRepository.findById(questionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Interview question not found"));
+
+        if (!question.getInterviewSession().getId().equals(session.getId())) {
+            throw new BadRequestException("Question does not belong to the given session");
+        }
+
+        if (interviewAnswerRepository.findByInterviewQuestionId(questionId).isPresent()) {
+            throw new BadRequestException("Answer already submitted for this question");
+        }
+
+        String transcript = request.getTranscriptText().trim();
+
+        InterviewAnswer answer = InterviewAnswer.builder()
+                .interviewQuestion(question)
+                .answerText(transcript)
+                .answerMode(AnswerMode.AUDIO)
+                .audioUrl(request.getAudioUrl())
+                .transcriptText(transcript)
+                .build();
+
+        InterviewAnswer savedAnswer = interviewAnswerRepository.save(answer);
+
+        GroqAnswerEvaluator.AnswerEvaluationResult aiResult = groqAnswerEvaluator.evaluate(
+                AnswerEvaluationPromptBuilder.buildSystemInstruction(),
+                AnswerEvaluationPromptBuilder.buildUserPrompt(
+                        session.getTargetRole(),
+                        session.getInterviewType().name(),
+                        question.getQuestionText(),
+                        transcript,
+                        AnswerMode.AUDIO.name()
+                )
+        );
+
+        AnswerEvaluation savedEvaluation = answerEvaluationRepository.save(
+                AnswerEvaluation.builder()
+                        .interviewAnswer(savedAnswer)
+                        .relevanceScore(aiResult.getRelevanceScore())
+                        .technicalScore(aiResult.getTechnicalScore())
+                        .communicationScore(aiResult.getCommunicationScore())
+                        .overallScore(aiResult.getOverallScore())
+                        .depthLevel(aiResult.getDepthLevel())
+                        .isShallow(aiResult.getIsShallow())
+                        .missingKeywordsJson(writeJson(aiResult.getMissingKeywords()))
+                        .strengthsJson(writeJson(aiResult.getStrengths()))
+                        .weaknessesJson(writeJson(aiResult.getWeaknesses()))
+                        .missingPointsJson(writeJson(aiResult.getMissingPoints()))
+                        .improvedAnswer(aiResult.getImprovedAnswer())
+                        .build()
+        );
+
+        updateSessionStatusIfCompleted(session);
+
+        return mapToAnswerResponse(savedAnswer, savedEvaluation);
     }
 }

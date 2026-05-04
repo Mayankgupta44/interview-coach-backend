@@ -15,4 +15,7 @@ public class InterviewAnswerResponse {
     private String answerText;
     private LocalDateTime createdAt;
     private AnswerEvaluationResponse evaluation;
+    private String answerMode;
+    private String audioUrl;
+    private String transcriptText;
 }

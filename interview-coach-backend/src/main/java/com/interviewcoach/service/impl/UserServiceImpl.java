@@ -35,6 +35,13 @@ public class UserServiceImpl implements UserService {
         user.setExperienceLevel(request.getExperienceLevel());
         user.setSkills(request.getSkills() != null ? new HashSet<>(request.getSkills()) : new HashSet<>());
 
+        user.setProfileImageUrl(request.getProfileImageUrl());
+        user.setLinkedInUrl(request.getLinkedInUrl());
+        user.setGithubUrl(request.getGithubUrl());
+        user.setPortfolioUrl(request.getPortfolioUrl());
+        user.setBio(request.getBio());
+        user.setLocation(request.getLocation());
+
         User updatedUser = userRepository.save(user);
         return mapToProfileResponse(updatedUser);
     }
@@ -55,6 +62,12 @@ public class UserServiceImpl implements UserService {
                 .targetRole(user.getTargetRole())
                 .experienceLevel(user.getExperienceLevel())
                 .skills(user.getSkills())
+                .profileImageUrl(user.getProfileImageUrl())
+                .linkedInUrl(user.getLinkedInUrl())
+                .githubUrl(user.getGithubUrl())
+                .portfolioUrl(user.getPortfolioUrl())
+                .bio(user.getBio())
+                .location(user.getLocation())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

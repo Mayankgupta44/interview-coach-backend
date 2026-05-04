@@ -15,4 +15,6 @@ public class DashboardResponse {
     private List<String> weakAreas;
     private List<ScoreHistoryItemResponse> recentScoreHistory;
     private List<RecommendationResponse> recommendations;
+    private List<ScoreTrendPoint> scoreTrend;
+    private List<WeakAreaStat> weakAreaStats;
 }

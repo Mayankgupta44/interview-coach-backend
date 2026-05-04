@@ -17,4 +17,11 @@ public class UserResponse {
     private String targetRole;
     private ExperienceLevel experienceLevel;
     private Set<String> skills;
+
+    private String profileImageUrl;
+    private String linkedInUrl;
+    private String githubUrl;
+    private String portfolioUrl;
+    private String bio;
+    private String location;
 }

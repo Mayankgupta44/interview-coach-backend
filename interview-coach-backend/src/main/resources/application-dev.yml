@@ -1,0 +1,52 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/interview_coach_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:86400000}
+
+  audio:
+    upload-dir: ${AUDIO_UPLOAD_DIR:uploads/audio}
+    max-size-mb: ${AUDIO_MAX_SIZE_MB:10}
+
+  file:
+    upload-dir: ${RESUME_UPLOAD_DIR:uploads/resumes}
+    profile-upload-dir: ${PROFILE_UPLOAD_DIR:uploads/profile-images}
+
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+
+ai:
+  provider: ${AI_PROVIDER:groq}
+  api-key: ${GROQ_API_KEY}
+  base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+  model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+  fallback-model: ${GROQ_FALLBACK_MODEL:llama-3.1-8b-instant}
+  max-retries: ${AI_MAX_RETRIES:2}
+  retry-delay-ms: ${AI_RETRY_DELAY_MS:1200}
+  transcription-model: ${GROQ_TRANSCRIPTION_MODEL:whisper-large-v3}

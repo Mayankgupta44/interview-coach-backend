@@ -11,4 +11,10 @@ public interface AnswerService {
     InterviewAnswerResponse getAnswerByQuestionId(Long sessionId, Long questionId);
     List<InterviewAnswerResponse> getAnswersBySessionId(Long sessionId);
     AnswerEvaluationResponse getEvaluationByAnswerId(Long answerId);
+    InterviewAnswerResponse submitAudioAnswer(Long sessionId, Long questionId, org.springframework.web.multipart.MultipartFile audioFile);
+    InterviewAnswerResponse submitAudioTranscriptAnswer(
+            Long sessionId,
+            Long questionId,
+            com.interviewcoach.dto.request.SubmitAudioTranscriptRequest request
+    );
 }

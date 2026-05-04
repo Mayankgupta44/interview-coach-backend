@@ -8,9 +8,14 @@ import org.springframework.context.annotation.Configuration;
 @Getter
 @Setter
 @Configuration
-@ConfigurationProperties(prefix = "gemini")
-public class GeminiProperties {
+@ConfigurationProperties(prefix = "ai")
+public class AiProperties {
+    private String provider;
     private String apiKey;
-    private String model;
     private String baseUrl;
+    private String model;
+    private String fallbackModel;
+    private String transcriptionModel;
+    private int maxRetries = 2;
+    private long retryDelayMs = 1200;
 }

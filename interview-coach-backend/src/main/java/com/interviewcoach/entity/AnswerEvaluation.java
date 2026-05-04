@@ -28,6 +28,15 @@ public class AnswerEvaluation extends BaseEntity {
     @Column(name = "overall_score", nullable = false)
     private Integer overallScore;
 
+    @Column(name = "depth_level", length = 20)
+    private String depthLevel;
+
+    @Column(name = "is_shallow")
+    private Boolean isShallow;
+
+    @Column(name = "missing_keywords_json", columnDefinition = "TEXT")
+    private String missingKeywordsJson;
+
     @Column(name = "strengths", nullable = false, columnDefinition = "TEXT")
     private String strengthsJson;
 

@@ -2,18 +2,15 @@ package com.interviewcoach.service.impl;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.interviewcoach.dto.response.DashboardResponse;
-import com.interviewcoach.dto.response.RecommendationResponse;
-import com.interviewcoach.dto.response.ScoreHistoryItemResponse;
-import com.interviewcoach.entity.AnswerEvaluation;
-import com.interviewcoach.entity.InterviewAnswer;
-import com.interviewcoach.entity.InterviewSession;
-import com.interviewcoach.entity.User;
+import com.interviewcoach.dto.response.*;
+import com.interviewcoach.entity.*;
 import com.interviewcoach.enums.SessionStatus;
 import com.interviewcoach.exception.ResourceNotFoundException;
 import com.interviewcoach.repository.AnswerEvaluationRepository;
 import com.interviewcoach.repository.InterviewAnswerRepository;
 import com.interviewcoach.repository.InterviewSessionRepository;
+import com.interviewcoach.repository.AnswerAttemptRepository;
+import com.interviewcoach.repository.AttemptEvaluationRepository;
 import com.interviewcoach.repository.UserRepository;
 import com.interviewcoach.service.DashboardService;
 import com.interviewcoach.service.RecommendationService;
@@ -32,6 +29,8 @@ public class DashboardServiceImpl implements DashboardService {
     private final InterviewSessionRepository interviewSessionRepository;
     private final InterviewAnswerRepository interviewAnswerRepository;
     private final AnswerEvaluationRepository answerEvaluationRepository;
+    private final AnswerAttemptRepository answerAttemptRepository;
+    private final AttemptEvaluationRepository attemptEvaluationRepository;
     private final RecommendationService recommendationService;
     private final ObjectMapper objectMapper;
 
@@ -82,6 +81,8 @@ public class DashboardServiceImpl implements DashboardService {
                 .weakAreas(weakAreas)
                 .recentScoreHistory(recentScoreHistory)
                 .recommendations(recommendations)
+                .scoreTrend(buildScoreTrend(user.getId()))
+                .weakAreaStats(buildWeakAreaStats(user.getId()))
                 .build();
     }
 
@@ -142,10 +143,101 @@ public class DashboardServiceImpl implements DashboardService {
     }
 
     private List<String> readJsonArray(String json) {
+        if (json == null || json.isBlank()) {
+            return Collections.emptyList();
+        }
+
         try {
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (Exception ex) {
-            throw new IllegalStateException("Failed to deserialize dashboard JSON", ex);
+            return Collections.emptyList();
         }
+    }
+
+    private List<ScoreTrendPoint> buildScoreTrend(Long userId) {
+        List<AnswerAttempt> attempts = answerAttemptRepository.findByUserId(userId);
+
+        return attempts.stream()
+                .map(attempt -> {
+                    AttemptEvaluation eval = attemptEvaluationRepository
+                            .findByAttemptId(attempt.getId())
+                            .orElse(null);
+
+                    if (eval == null) return null;
+
+                    return ScoreTrendPoint.builder()
+                            .date("Attempt " + attempt.getId())
+                            .averageScore(eval.getOverallScore())
+                            .build();
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private List<WeakAreaStat> buildWeakAreaStats(Long userId) {
+        List<AnswerAttempt> attempts = answerAttemptRepository.findByUserId(userId);
+
+        Map<String, Integer> frequency = new HashMap<>();
+
+        for (AnswerAttempt attempt : attempts) {
+            AttemptEvaluation eval = attemptEvaluationRepository
+                    .findByAttemptId(attempt.getId())
+                    .orElse(null);
+
+            if (eval == null) continue;
+
+            List<String> weaknesses = readJsonArray(eval.getWeaknessesJson());
+            List<String> missingPoints = readJsonArray(eval.getMissingPointsJson());
+            List<String> missingKeywords = readJsonArray(eval.getMissingKeywordsJson());
+
+            for (String item : weaknesses) {
+                addWeakArea(frequency, item);
+            }
+
+            for (String item : missingPoints) {
+                addWeakArea(frequency, item);
+            }
+
+            for (String item : missingKeywords) {
+                addWeakArea(frequency, item);
+            }
+        }
+
+        return frequency.entrySet().stream()
+                .sorted((a, b) -> b.getValue() - a.getValue())
+                .limit(6)
+                .map(entry -> WeakAreaStat.builder()
+                        .topic(entry.getKey())
+                        .count(entry.getValue())
+                        .build())
+                .toList();
+    }
+
+    private void addWeakArea(Map<String, Integer> frequency, String text) {
+        if (text == null || text.isBlank()) return;
+
+        String topic = normalizeWeakArea(text);
+        frequency.put(topic, frequency.getOrDefault(topic, 0) + 1);
+    }
+
+    private String normalizeWeakArea(String text) {
+        if (text == null) return "Other";
+
+        String value = text.toLowerCase();
+
+        if (value.contains("exception") || value.contains("error")) return "Exception Handling";
+        if (value.contains("cache")) return "Caching";
+        if (value.contains("security") || value.contains("auth")) return "Security";
+        if (value.contains("spring")) return "Spring Boot";
+        if (value.contains("oop")) return "OOP Concepts";
+        if (value.contains("microservice")) return "Microservices";
+        if (value.contains("rest") || value.contains("api")) return "REST APIs";
+        if (value.contains("database") || value.contains("query") || value.contains("sql")) return "Database";
+        if (value.contains("optimiz")) return "Optimization";
+        if (value.contains("docker") || value.contains("container")) return "Containerization";
+        if (value.contains("domain") || value.contains("ddd")) return "Domain Design";
+        if (value.contains("test")) return "Testing";
+
+        return text.length() > 30 ? text.substring(0, 30) + "..." : text;
     }
 }

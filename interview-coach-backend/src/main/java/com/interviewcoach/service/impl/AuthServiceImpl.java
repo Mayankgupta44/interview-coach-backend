@@ -90,6 +90,12 @@ public class AuthServiceImpl implements AuthService {
                 .targetRole(user.getTargetRole())
                 .experienceLevel(user.getExperienceLevel())
                 .skills(user.getSkills())
+                .profileImageUrl(user.getProfileImageUrl())
+                .linkedInUrl(user.getLinkedInUrl())
+                .githubUrl(user.getGithubUrl())
+                .portfolioUrl(user.getPortfolioUrl())
+                .bio(user.getBio())
+                .location(user.getLocation())
                 .build();
     }
 }

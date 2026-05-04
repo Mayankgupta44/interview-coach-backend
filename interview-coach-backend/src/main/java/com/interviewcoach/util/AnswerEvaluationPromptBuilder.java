@@ -7,48 +7,104 @@ public final class AnswerEvaluationPromptBuilder {
 
     public static String buildSystemInstruction() {
         return """
-                You are an expert interview evaluator.
-
-                Evaluate the candidate's answer in strict JSON.
-
-                Required JSON structure:
-                {
-                  "relevanceScore": 0,
-                  "technicalScore": 0,
-                  "communicationScore": 0,
-                  "overallScore": 0,
-                  "strengths": ["..."],
-                  "weaknesses": ["..."],
-                  "missingPoints": ["..."],
-                  "improvedAnswer": "..."
-                }
-
-                Rules:
-                - All scores must be integers from 0 to 100.
-                - strengths, weaknesses, and missingPoints must be arrays of unique strings.
-                - improvedAnswer must be concise, correct, and interview-ready.
-                - Be practical, realistic, and slightly strict.
-                - Do not include markdown.
-                - Return only valid JSON.
-                """;
+            You are a strict technical interviewer.
+    
+            Evaluate the user's answer and return ONLY valid JSON in this format:
+    
+            {
+              "relevanceScore": 0,
+              "technicalScore": 0,
+              "communicationScore": 0,
+              "overallScore": 0,
+              "depthLevel": "LOW | MEDIUM | HIGH",
+              "isShallow": true,
+              "missingKeywords": ["..."],
+              "strengths": ["..."],
+              "weaknesses": ["..."],
+              "missingPoints": ["..."],
+              "improvedAnswer": "..."
+            }
+    
+            Evaluation Rules:
+            - Scores must be 0–100 integers
+            - Be strict (real interview level)
+            - depthLevel:
+                LOW → superficial / incomplete
+                MEDIUM → partial understanding
+                HIGH → strong understanding
+    
+            - isShallow = true if:
+                * answer is vague
+                * lacks technical detail
+                * too short
+    
+            - missingKeywords:
+                * important technical terms NOT mentioned
+    
+            - improvedAnswer:
+                * must be ideal interview answer
+                * structured + concise + technical
+    
+            - No markdown
+            - No explanations outside JSON
+        """;
     }
 
     public static String buildUserPrompt(
-            String targetRole,
-            String interviewType,
-            String questionText,
-            String answerText
+            String role,
+            String type,
+            String question,
+            String answer
     ) {
         return """
-                Evaluate this interview answer.
+            Role: %s
+            Interview Type: %s
+    
+            Question:
+            %s
+    
+            User Answer:
+            %s
+    
+            Evaluate this answer strictly like a real interviewer.
+        """.formatted(role, type, question, answer);
+    }
 
-                Target Role: %s
-                Interview Type: %s
-                Question:
-                %s
+    public static String buildUserPrompt(
+            String role,
+            String type,
+            String question,
+            String answer,
+            String answerMode
+    ) {
+        String modeInstruction = "AUDIO".equalsIgnoreCase(answerMode)
+                ? """
+              This answer was transcribed from user's recorded speech.
+              Evaluate technical correctness and communication clarity.
+              Ignore minor speech-to-text transcription mistakes.
+              Do not penalize small grammar errors caused by transcription.
+              Still penalize vague, shallow, incomplete, or technically incorrect answers.
+              """
+                : """
+              This answer was typed by the user.
+              Evaluate normally based on technical correctness, relevance, and communication.
+              """;
 
-                Candidate Answer:
-                %s
-                """.formatted(targetRole, interviewType, questionText, answerText);
+        return """
+            Role: %s
+            Interview Type: %s
+            Answer Mode: %s
+
+            Special Instruction:
+            %s
+
+            Question:
+            %s
+
+            User Answer:
+            %s
+
+            Evaluate this answer strictly like a real interviewer.
+            """.formatted(role, type, answerMode, modeInstruction, question, answer);
     }
 }

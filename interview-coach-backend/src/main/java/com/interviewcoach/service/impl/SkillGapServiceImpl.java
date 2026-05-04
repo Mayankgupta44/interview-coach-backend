@@ -10,7 +10,7 @@ import com.interviewcoach.entity.SkillGapReport;
 import com.interviewcoach.entity.User;
 import com.interviewcoach.exception.BadRequestException;
 import com.interviewcoach.exception.ResourceNotFoundException;
-import com.interviewcoach.integration.ai.GeminiSkillGapAnalyzer;
+import com.interviewcoach.integration.ai.GroqSkillGapAnalyzer;
 import com.interviewcoach.repository.JobDescriptionRepository;
 import com.interviewcoach.repository.ResumeProfileRepository;
 import com.interviewcoach.repository.SkillGapReportRepository;
@@ -34,7 +34,7 @@ public class SkillGapServiceImpl implements SkillGapService {
     private final ResumeProfileRepository resumeProfileRepository;
     private final JobDescriptionRepository jobDescriptionRepository;
     private final SkillGapReportRepository skillGapReportRepository;
-    private final GeminiSkillGapAnalyzer geminiSkillGapAnalyzer;
+    private final GroqSkillGapAnalyzer groqSkillGapAnalyzer;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -49,7 +49,7 @@ public class SkillGapServiceImpl implements SkillGapService {
             throw new BadRequestException("Resume text and job description text are required for analysis");
         }
 
-        GeminiSkillGapAnalyzer.SkillGapAiResult aiResult = geminiSkillGapAnalyzer.analyze(
+        GroqSkillGapAnalyzer.SkillGapAiResult aiResult = groqSkillGapAnalyzer.analyze(
                 SkillGapPromptBuilder.buildSystemInstruction(),
                 SkillGapPromptBuilder.buildUserPrompt(resumeText, jobDescriptionText)
         );

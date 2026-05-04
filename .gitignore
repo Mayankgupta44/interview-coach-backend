@@ -1,0 +1,7 @@
+
+uploads/
+target/
+.env
+.env.*
+*.zip
+*.log

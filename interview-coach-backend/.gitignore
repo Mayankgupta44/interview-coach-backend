@@ -16,11 +16,12 @@ Thumbs.db
 
 # Environment
 .env
-application-dev.yml
-application-prod.yml
+.env.*
+!.env.example
 
-# Node (if any)
+# Uploads / generated files
+uploads/
+*.zip
+
+# Node if any
 node_modules/
-
-# Maven
-.mvn/

@@ -46,4 +46,22 @@ public class User extends BaseEntity {
     @Column(name = "skill")
     @Builder.Default
     private Set<String> skills = new HashSet<>();
+
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    @Column(name = "linkedin_url", length = 500)
+    private String linkedInUrl;
+
+    @Column(name = "github_url", length = 500)
+    private String githubUrl;
+
+    @Column(name = "portfolio_url", length = 500)
+    private String portfolioUrl;
+
+    @Column(name = "bio", length = 500)
+    private String bio;
+
+    @Column(name = "location", length = 150)
+    private String location;
 }

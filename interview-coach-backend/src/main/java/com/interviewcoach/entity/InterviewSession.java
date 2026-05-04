@@ -4,6 +4,7 @@ import com.interviewcoach.enums.InterviewType;
 import com.interviewcoach.enums.SessionStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import com.interviewcoach.enums.DifficultyLevel;
 
 @Entity
 @Table(name = "interview_sessions")
@@ -35,4 +36,11 @@ public class InterviewSession extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "difficulty_level", nullable = false, length = 30)
+    private DifficultyLevel difficultyLevel;
+
+    @Column(name = "question_style", length = 100)
+    private String questionStyle;
 }

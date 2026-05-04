@@ -11,6 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
+import com.interviewcoach.dto.request.SubmitAudioTranscriptRequest;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/interviews/{sessionId}/answers")
@@ -50,5 +53,29 @@ public class AnswerController {
             @PathVariable Long answerId
     ) {
         return ResponseEntity.ok(answerService.getEvaluationByAnswerId(answerId));
+    }
+
+    @PostMapping("/{questionId}/audio")
+    public ResponseEntity<InterviewAnswerResponse> submitAudioAnswer(
+            @PathVariable Long sessionId,
+            @PathVariable Long questionId,
+            @RequestParam("audio") MultipartFile audioFile
+    ) {
+        return new ResponseEntity<>(
+                answerService.submitAudioAnswer(sessionId, questionId, audioFile),
+                HttpStatus.CREATED
+        );
+    }
+
+    @PostMapping("/{questionId}/audio-transcript")
+    public ResponseEntity<InterviewAnswerResponse> submitAudioTranscriptAnswer(
+            @PathVariable Long sessionId,
+            @PathVariable Long questionId,
+            @Valid @RequestBody SubmitAudioTranscriptRequest request
+    ) {
+        return new ResponseEntity<>(
+                answerService.submitAudioTranscriptAnswer(sessionId, questionId, request),
+                HttpStatus.CREATED
+        );
     }
 }
