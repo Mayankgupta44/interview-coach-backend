@@ -79,11 +79,11 @@ Recommendation
 ---
 
 ## ⚙️ Setup & Run
-- 1. Clone the Repository
+- Clone the Repository
 git clone https://github.com/Mayankgupta44/interview-coach-backend.git
-- 2. Go to the Project Folder
+- Go to the Project Folder
 cd interview-coach-backend
-- 3. Configure Environment Variables
+- Configure Environment Variables
 
 Create an .env file or configure these values in your environment/application properties:
 
@@ -92,9 +92,9 @@ DATABASE_USERNAME=your_username
 DATABASE_PASSWORD=your_password
 JWT_SECRET=your_jwt_secret
 GROQ_API_KEY=your_ai_api_key
-- 4. Build the Project
+- Build the Project
 mvn clean install
-- 5. Run the Application
+- Run the Application
 mvn spring-boot:run
 
 ---
@@ -109,7 +109,10 @@ http://localhost:8080/swagger-ui.html
 
 ## 🔗 Frontend Repository
 https://github.com/Mayankgupta44/interview-coach-frontend
-📌 Project Status
+
+---
+
+## 📌 Project Status
 
 The backend is under active development, and the core features have been implemented.
 
