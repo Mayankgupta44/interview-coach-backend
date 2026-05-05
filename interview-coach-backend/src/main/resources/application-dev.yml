@@ -1,17 +1,17 @@
 spring:
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/interview_coach_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
     open-in-view: false
 
   jackson:
@@ -35,11 +35,6 @@ app:
   file:
     upload-dir: ${RESUME_UPLOAD_DIR:uploads/resumes}
     profile-upload-dir: ${PROFILE_UPLOAD_DIR:uploads/profile-images}
-
-gemini:
-  api-key: ${GEMINI_API_KEY:}
-  model: ${GEMINI_MODEL:gemini-2.5-flash}
-  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
 
 ai:
   provider: ${AI_PROVIDER:groq}
