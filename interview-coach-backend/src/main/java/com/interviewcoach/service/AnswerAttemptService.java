@@ -22,4 +22,6 @@ public interface AnswerAttemptService {
             Long questionId,
             SubmitAudioTranscriptRequest request
     );
+
+    List<AnswerAttemptResponse> getAttemptsBySessionId(Long sessionId);
 }
