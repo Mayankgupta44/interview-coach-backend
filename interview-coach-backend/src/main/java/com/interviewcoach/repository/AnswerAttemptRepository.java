@@ -15,4 +15,9 @@ public interface AnswerAttemptRepository extends JpaRepository<AnswerAttempt, Lo
     long countByQuestionInterviewSessionIdAndUserId(Long sessionId, Long userId);
 
     List<AnswerAttempt> findByUserId(Long userId);
+
+    List<AnswerAttempt> findByQuestionInterviewSessionIdAndUserIdOrderByQuestionQuestionOrderAscAttemptNumberAsc(
+            Long sessionId,
+            Long userId
+    );
 }
