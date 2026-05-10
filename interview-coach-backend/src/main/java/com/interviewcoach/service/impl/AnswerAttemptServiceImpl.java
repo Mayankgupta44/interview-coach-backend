@@ -134,6 +134,30 @@ public class AnswerAttemptServiceImpl implements AnswerAttemptService {
     }
 
     @Override
+    public List<AnswerAttemptResponse> getAttemptsBySessionId(Long sessionId) {
+        User user = getCurrentUser();
+    
+        InterviewSession session = interviewSessionRepository.findByIdAndUserId(sessionId, user.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Interview session not found"));
+    
+        return answerAttemptRepository
+                .findByQuestionInterviewSessionIdAndUserIdOrderByQuestionQuestionOrderAscAttemptNumberAsc(
+                        session.getId(),
+                        user.getId()
+                )
+                .stream()
+                .map(attempt -> {
+                    AttemptEvaluation evaluation = attemptEvaluationRepository.findByAttemptId(attempt.getId())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Evaluation not found for attempt: " + attempt.getId()
+                            ));
+    
+                    return mapToAttemptResponse(attempt, evaluation);
+                })
+                .toList();
+    }
+
+    @Override
     public AttemptComparisonResponse getLatestAttemptComparison(Long sessionId, Long questionId) {
         List<AnswerAttemptResponse> attempts = getAttemptsByQuestionId(sessionId, questionId);
 
