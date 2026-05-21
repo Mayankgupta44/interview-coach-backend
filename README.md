@@ -114,7 +114,7 @@ https://github.com/Mayankgupta44/interview-coach-frontend
 
 ## 📌 Project Status
 
-The backend is under active development, and the core features have been implemented.
+The backend is under active development, and the most core features have been implemented.
 
 ---
 
